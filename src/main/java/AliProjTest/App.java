@@ -1,5 +1,7 @@
 package AliProjTest;
 import java.sql.* ;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 
 public class App 
 {
@@ -10,7 +12,6 @@ public class App
     static final String PASS = "123456";
 
     public static void main(String[] args) {
-
         Connection conn = null;
         Statement stmt = null;
         try{

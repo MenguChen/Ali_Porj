@@ -3,6 +3,8 @@ import java.sql.* ;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+
+
 public class InsertReconds
 {
     public static void main(String[] args) {
@@ -29,7 +31,7 @@ public class InsertReconds
                 beginTime = new Date().getTime();//开始计时
                 
                  // 保存sql后缀
-                String sqlPrefix = "insert into info (id,name,sex,phone,join_time,age,country) values ";
+                String sqlPrefix = "insert into info_part (id,name,sex,phone,join_time,age,country) values ";
                
                 StringBuffer suffix = new StringBuffer();
                 

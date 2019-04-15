@@ -30,7 +30,6 @@ public class read_write_csv{
             System.out.println("读取失败");
             e.printStackTrace();
         }
-        
     }
 
     public void write(ResultSet rs){

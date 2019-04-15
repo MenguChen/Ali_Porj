@@ -1,21 +1,24 @@
 package AliProjTest;
 import java.io.*;
 import java.util.*;
-import org.apache.commons.*;
-import org.apache.poi.util.IOUtils;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import java.io.BufferedWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.ResultSet;
 import java.io.Reader;
 import org.apache.commons.csv.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 
 
 public class Merge{
+
     private Queue<person> queue_person = new PriorityQueue<>(perComparator) ;
     public  Reader[] readerset ;   //n个文件的Reader集合
     public  CSVParser[] csvParser ;   //n个CSV文件的Parser集合
-    public  int perdata = 10 ;   //每次从csv中读取的数据量，默认设定为100000 
+    public  int perdata = 100000 ;   //每次从csv中读取的数据量，默认设定为100000 
+    public  int persheet = 1000000 ;   //每张sheet表中可以存入的数据量
     public  int n ;   //需要归并的文件数
     public  int[] datafromfile ;
 
@@ -36,16 +39,6 @@ public class Merge{
         else
             WriteToExcel(TargetFilePath) ;
 
-
-        while(true){
-            person per = queue_person.poll() ;
-            if(per==null)
-                break ;
-            System.out.print("id: " + per.id);
-            System.out.print(" name: " + per.name) ;
-            System.out.println(" age: " + per.age) ;
-        }
-
     }
     
     public void InitQueue(){
@@ -64,6 +57,13 @@ public class Merge{
             csvParser[j] = ReadData(csvParser[j], j, perdata) ;
     }
 
+    public void show(){
+        for(int i = 0 ; i < n ; i ++)
+            System.out.print(" " + datafromfile[i]);
+        System.out.println() ;    
+    }
+
+
     public void WriteToCsv(String Path){
 
         try{
@@ -71,7 +71,8 @@ public class Merge{
             CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("id","name","age","country")) ;
             int fileindex ;
             person per ;
-            while(queue_person.isEmpty())
+            System.out.println("开始写入");
+            while(!queue_person.isEmpty())
             {
                 per = queue_person.poll() ;
                 csvPrinter.printRecord(per.id, per.name, per.age, per.country);
@@ -79,6 +80,7 @@ public class Merge{
                 fileindex = per.file_index ;
                 datafromfile[fileindex] ++ ;   //统计数据来自某个源文件的次数，当次数达到perdata时，说明可以重新从该源文件中载入数据了
                 if(datafromfile[fileindex]==perdata){
+                    // show() ;
                     csvParser[fileindex] = ReadData(csvParser[fileindex], fileindex, perdata) ;
                     datafromfile[fileindex] = 0 ;
                     csvPrinter.flush();    //重新载入数据后也可以适当地清空一下缓存
@@ -95,10 +97,53 @@ public class Merge{
 
     public void WriteToExcel(String Path){
 
-        // XSSFWorkbook wb = new XSSFWorkbook() ;
-        //         XSSFSheet sheet = wb.createSheet("sheet1") ;
-        //         XSSFRow row ;
-        //         XSSFCell cell ;
+        SXSSFWorkbook wb = new SXSSFWorkbook() ;
+        try{
+            FileOutputStream out = new FileOutputStream(Path);
+            wb.setCompressTempFiles(true);
+            Sheet sheet ;
+            Row row ;
+            Cell cell ;
+
+            int fileindex ;
+            int rowindex = 0 ;
+            person per ;
+
+            System.out.println("开始写入");
+
+            for(int i = 0 ; i < 10 ; i ++){
+                sheet = wb.createSheet("sheet"+i) ;
+                rowindex = 0 ;
+                while(!queue_person.isEmpty() && rowindex<persheet)
+                {
+                    per = queue_person.poll() ;
+                    row = sheet.createRow(rowindex++) ;
+                    row.createCell(0).setCellValue(per.id);
+                    row.createCell(1).setCellValue(per.name);
+                    row.createCell(2).setCellValue(per.age);
+                    row.createCell(3).setCellValue(per.country);
+                    
+                    fileindex = per.file_index ;
+                    datafromfile[fileindex] ++ ;   //统计数据来自某个源文件的次数，当    次数达到perdata时，说明可以重新从该源文件中载入数据了
+                    if(datafromfile[fileindex]==perdata){
+                        // show() ;
+                        csvParser[fileindex] = ReadData(csvParser[fileindex], fileindex, perdata) ;
+                        datafromfile[fileindex] = 0 ;
+                    }
+                }
+            }
+
+            wb.write(out) ;
+            out.close() ;
+        } catch (Exception e){
+            System.out.println("写入失败");
+            e.printStackTrace();
+        } finally{
+            if(wb != null){
+                wb.dispose() ; //删除临时表
+            }
+        }
+
     }
 
     public static Comparator<person> perComparator = new Comparator<person>(){
@@ -116,7 +161,7 @@ public class Merge{
         for(CSVRecord csvRecord : csvParser){
             person per = new person(Integer.parseInt(csvRecord.get("id")), csvRecord.get("name"), Integer.parseInt(csvRecord.get("age")), csvRecord.get("country"), index) ;
             queue_person.add(per) ;
-            System.out.println(per.id);
+            // System.out.println(per.id);
             count ++ ;
             if(count==perdata)
                 break ;
